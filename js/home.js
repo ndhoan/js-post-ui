@@ -1,7 +1,8 @@
 import dayjs from 'dayjs'
 import postApi from './api/postApi'
-import { setTextContent, truncateText } from './utils'
+import { getUlPagination, setTextContent, truncateText } from './utils'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import debounce from 'lodash.debounce'
 
 dayjs.extend(relativeTime)
 
@@ -37,24 +38,98 @@ function renderPostList(postList) {
   const ulElement = document.getElementById('postsList')
   if (!ulElement) return
 
+  // clear current list
+  ulElement.textContent = ''
+
   postList.forEach((post) => {
     const liElement = createPostElement(post)
     ulElement.appendChild(liElement)
   })
 }
 
+function renderPagination(pagination) {
+  const ulPagination = getUlPagination()
+
+  if (!pagination || !ulPagination) return
+  // calc totalPages
+  const { _page, _limit, _totalRows } = pagination
+  const totalPages = Math.ceil(_totalRows / _limit)
+
+  // save page and totalPages to ulPagination
+  ulPagination.dataset.page = _page
+  ulPagination.dataset.totalPages = totalPages
+
+  //check if enable/disable next/prev link
+  if (_page <= 1) ulPagination.firstElementChild?.classList.add('disabled')
+  else ulPagination.firstElementChild?.classList.remove('disabled')
+
+  if (_page >= totalPages) ulPagination.lastElementChild?.classList.add('disabled')
+  else ulPagination.lastElementChild?.classList.remove('disabled')
+}
+
+async function handleFilterChange(filterName, filterValue) {
+  // update query params
+  try {
+    const url = new URL(window.location)
+    url.searchParams.set(filterName, filterValue)
+
+    if (filterName === 'title_like') url.searchParams.set('_page', 1)
+
+    history.pushState({}, '', url)
+
+    const { data, pagination } = await postApi.getAll(url.searchParams)
+
+    renderPostList(data)
+    renderPagination(pagination)
+  } catch (error) {
+    console.log('failed to fetch post list', error)
+  }
+}
+
 function handlePrev(e) {
   e.preventDefault()
-  console.log('prev')
+
+  const ulPagination = getUlPagination()
+  if (!ulPagination) return
+
+  const page = Number.parseInt(ulPagination.dataset.page) || 1
+  if (page <= 1) return
+
+  handleFilterChange('_page', page - 1)
 }
 
 function handleNext(e) {
   e.preventDefault()
-  console.log('next')
+
+  const ulPagination = getUlPagination()
+  if (!ulPagination) return
+
+  const page = Number.parseInt(ulPagination.dataset.page) || 1
+  const totalPages = Number.parseInt(ulPagination.dataset.totalPages)
+  if (page >= totalPages) return
+
+  handleFilterChange('_page', page + 1)
+}
+
+function initSearch() {
+  const searchInput = document.getElementById('searchInput')
+  if (!searchInput) return
+
+  //set default values from query params
+  const queryParams = new URLSearchParams(window.location.search)
+  if (queryParams.get('title_like')) {
+    searchInput.value = queryParams.get('title_like')
+  }
+
+  const debounceSearch = debounce(
+    (event) => handleFilterChange('title_like', event.target.value),
+    500
+  )
+  searchInput.addEventListener('input', debounceSearch)
 }
 
 function initPagination() {
-  const ulPagination = document.getElementById('pagination')
+  const ulPagination = getUlPagination()
   if (!ulPagination) return
 
   const prevElement = ulPagination.firstElementChild?.firstElementChild
@@ -80,17 +155,16 @@ function initURL() {
 
 ;(async () => {
   try {
-    initPagination()
     initURL()
+    initPagination()
+    initSearch()
 
     const queryParams = new URLSearchParams(window.location.search)
 
-    // const queryParams = {
-    //   _page: 1,
-    //   _limit: 6,
-    // }
     const { data, pagination } = await postApi.getAll(queryParams)
+
     renderPostList(data)
+    renderPagination(pagination)
   } catch (error) {
     console.log('get all failed', error)
   }
