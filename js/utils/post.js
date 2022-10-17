@@ -27,6 +27,11 @@ export function createPostElement(post) {
     })
   }
 
+  const divElement = liElement.firstElementChild
+  divElement.addEventListener('click', () => {
+    window.location.assign(`/post-detail.html?id=${post.id}`)
+  })
+
   return liElement
 }
 
