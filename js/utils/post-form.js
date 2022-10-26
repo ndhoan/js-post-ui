@@ -1,4 +1,4 @@
-import { setBackgroundImage, setFieldValue, setTextContent } from './common'
+import { randomNumber, setBackgroundImage, setFieldValue, setTextContent } from './common'
 import * as yup from 'yup'
 
 function getFormValues(form) {
@@ -39,6 +39,10 @@ function getPostSchema() {
         (value) => value.split(' ').filter((x) => !!x && x.length >= 3).length >= 2
       ),
     description: yup.string(),
+    imageUrl: yup
+      .string()
+      .required('Please random a background image')
+      .url('Please enter a valid URL'),
   })
 }
 
@@ -52,7 +56,7 @@ function setFieldError(form, name, error) {
 
 async function validatePostForm(form, formValues) {
   try {
-    ;['title', 'author'].forEach((name) => setFieldError(form, name, ''))
+    ;['title', 'author', 'imageUrl'].forEach((name) => setFieldError(form, name, ''))
 
     const schema = getPostSchema()
     await schema.validate(formValues, { abortEarly: false })
@@ -79,20 +83,43 @@ async function validatePostForm(form, formValues) {
   return isValid
 }
 
+function initRandomImage(form) {
+  const randomButton = document.getElementById('postChangeImage')
+  if (!randomButton) return
+
+  randomButton.addEventListener('click', () => {
+    // random ID
+    // build URL
+    // set imageUrl input + background
+    const imageUrl = `https://picsum.photos/id/${randomNumber(1000)}/1368/400`
+
+    setFieldValue(form, '[name="imageUrl"]', imageUrl)
+    setBackgroundImage(document, '#postHeroImage', imageUrl)
+  })
+}
+
 export function initPostForm({ formId, defaultValues, onSubmit }) {
   const form = document.getElementById(formId)
   if (!form) return
 
+  let submitting = false
   setFormValues(form, defaultValues)
 
+  // init image events
+  initRandomImage(form)
   form.addEventListener('submit', async (event) => {
     event.preventDefault()
+
+    if (submitting) return
+    submitting = true
+
     const formValues = getFormValues(form)
     formValues.id = defaultValues.id
 
     // validation
     const isValid = await validatePostForm(form, formValues)
-    if (!isValid) return
-    onSubmit?.(formValues)
+    if (isValid) await onSubmit?.(formValues)
+
+    submitting = false
   })
 }

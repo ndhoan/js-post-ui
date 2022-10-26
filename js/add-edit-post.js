@@ -11,7 +11,7 @@ async function handlePostFormSubmit(formValues) {
     toast.success('Save post successfully!!!')
     setTimeout(() => {
       window.location.assign(`/post-detail.html?id=${savedPost.id}`)
-    }, 2000)
+    }, 1000)
   } catch (error) {
     console.log('failed to save post', error)
     toast.error(`Error: ${error.message}`)

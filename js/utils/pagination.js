@@ -24,7 +24,7 @@ export function initPagination({ elementId, defaultParams, onChange }) {
 
   const prevElement = ulPagination.firstElementChild?.firstElementChild
   if (prevElement) {
-    prevElement.addEventListener('click', () => {
+    prevElement.addEventListener('click', (e) => {
       e.preventDefault()
 
       const page = Number.parseInt(ulPagination.dataset.page) || 1
