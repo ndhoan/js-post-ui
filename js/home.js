@@ -1,11 +1,12 @@
 import postApi from './api/postApi'
-import { initSearch, initPagination, renderPostList, renderPagination } from './utils'
+import { initSearch, initPagination, renderPostList, renderPagination, toast } from './utils'
 
 async function handleFilterChange(filterName, filterValue) {
   // update query params
   try {
     const url = new URL(window.location)
-    url.searchParams.set(filterName, filterValue)
+
+    if (filterName) url.searchParams.set(filterName, filterValue)
 
     if (filterName === 'title_like') url.searchParams.set('_page', 1)
 
@@ -20,6 +21,24 @@ async function handleFilterChange(filterName, filterValue) {
   }
 }
 
+function registerPostDeleteEvent() {
+  document.addEventListener('post-delete', async (event) => {
+    try {
+      const post = event.detail
+      const message = `Are you sure remove post "${post.title}"`
+      if (window.confirm(message)) {
+        await postApi.remove(post.id)
+        handleFilterChange()
+
+        toast.success('Remove post successfully')
+      }
+    } catch (error) {
+      console.log('failed to remove post', error)
+      toast.error(error.message)
+    }
+  })
+}
+
 ;(async () => {
   try {
     const url = new URL(window.location)
@@ -29,8 +48,9 @@ async function handleFilterChange(filterName, filterValue) {
     if (!url.searchParams.get('_limit')) url.searchParams.set('_limit', 6)
 
     history.pushState({}, '', url)
-
     const queryParams = url.searchParams
+
+    registerPostDeleteEvent()
 
     initPagination({
       elementId: 'pagination',
@@ -44,10 +64,11 @@ async function handleFilterChange(filterName, filterValue) {
       onChange: (value) => handleFilterChange('title_like', value),
     })
 
-    const { data, pagination } = await postApi.getAll(queryParams)
+    // const { data, pagination } = await postApi.getAll(queryParams)
 
-    renderPostList('postList', data)
-    renderPagination('pagination', pagination)
+    // renderPostList('postList', data)
+    // renderPagination('pagination', pagination)
+    handleFilterChange()
   } catch (error) {
     console.log('get all failed', error)
   }

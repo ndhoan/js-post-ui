@@ -2,11 +2,37 @@
 import postApi from './api/postApi'
 import { initPostForm, toast } from './utils'
 
+function removeUnusedFields(formValues) {
+  const payload = { ...formValues }
+
+  if (payload.imageSource === 'upload') {
+    delete payload.imageUrl
+  } else delete payload.image
+
+  delete payload.imageSource
+
+  if (!payload.id) delete payload.id
+
+  return payload
+}
+
+function jsonToFormData(jsonObject) {
+  const formData = new FormData()
+  for (const key in jsonObject) {
+    formData.set(key, jsonObject[key])
+  }
+
+  return formData
+}
+
 async function handlePostFormSubmit(formValues) {
   try {
+    const payload = removeUnusedFields(formValues)
+    const formData = jsonToFormData(payload)
+
     const savedPost = formValues.id
-      ? await postApi.update(formValues)
-      : await postApi.add(formValues)
+      ? await postApi.updateFormData(formData)
+      : await postApi.addFormData(formData)
 
     toast.success('Save post successfully!!!')
     setTimeout(() => {
